@@ -1,0 +1,6 @@
+{
+  "name": "ai_poc_5",
+  "script": "poc.py",
+  "pip": ["diffusers", "transformers", "accelerate", "sentencepiece", "soundfile", "kokoro-onnx"],
+  "setup": ["apt-get -qq update && apt-get -qq install -y espeak-ng"]
+}

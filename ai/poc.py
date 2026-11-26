@@ -115,6 +115,50 @@ def img2vid(cfg_name):
         times[s["id"]] = round(time.time() - t, 1)
     return times
 
+
+@step("2c_kareden_video_diffusers")
+def img2vid_diffusers():
+    """Yedek yol: diffusers LTX-Video 0.9.5 (2B), CPU'ya boşaltmalı. Önce bf16, NaN/hata olursa fp16."""
+    import torch, numpy as np
+    from diffusers import LTXImageToVideoPipeline
+    from diffusers.utils import export_to_video, load_image
+    res = {}
+    for dtype_name in ("bfloat16", "float16"):
+        dt = getattr(torch, dtype_name)
+        try:
+            pipe = LTXImageToVideoPipeline.from_pretrained("Lightricks/LTX-Video-0.9.5", torch_dtype=dt)
+            pipe.enable_model_cpu_offload()
+            pipe.vae.enable_tiling()
+            ok_any = False
+            for s in SHOTS:
+                src = OUT + "/kare_%s.png" % s["id"]
+                if not os.path.exists(src):
+                    continue
+                img = load_image(src).resize((768, 448))
+                t = time.time()
+                frames = pipe(image=img, prompt=s["mov"] + ", photorealistic, cinematic, natural movement",
+                              negative_prompt="worst quality, inconsistent motion, blurry, jittery, distorted face",
+                              width=768, height=448, num_frames=97, num_inference_steps=30, guidance_scale=3.0,
+                              generator=torch.Generator("cpu").manual_seed(s["seed"])).frames[0]
+                arr = np.asarray(frames[len(frames) // 2]).astype(float)
+                if arr.mean() < 3:  # kapkara kare = NaN belirtisi
+                    raise RuntimeError("bos/siyah kare (%s)" % dtype_name)
+                export_to_video(frames, OUT + "/klip_%s.mp4" % s["id"], fps=24)
+                res["%s_%s" % (s["id"], dtype_name)] = round(time.time() - t, 1)
+                ok_any = True
+            del pipe; torch.cuda.empty_cache()
+            if ok_any:
+                res["kullanilan"] = dtype_name
+                return res
+        except Exception as e:
+            res["hata_" + dtype_name] = repr(e)[:600]
+            try:
+                del pipe
+            except Exception:
+                pass
+            torch.cuda.empty_cache()
+    raise RuntimeError(json.dumps(res))
+
 @step("3_ses")
 def voices():
     import soundfile as sf, urllib.request
@@ -154,12 +198,12 @@ def assemble():
 if __name__ == "__main__":
     sh("nvidia-smi --query-gpu=name,memory.total --format=csv")
     keyframes()
-    cfgs = ltx_setup() or []
+    cfgs = []  # resmi LTX deposu T4'te bellek taşırıyor; diffusers yolu kullanılıyor
     pick = [c for c in cfgs if "2b" in c and "distilled" in c]
     pick = sorted(pick)[-1] if pick else None
     REPORT["ltx_config"] = pick
-    if pick:
-        img2vid(pick)
+    if not glob.glob(OUT + "/klip_*.mp4"):
+        img2vid_diffusers()
     voices()
     assemble()
     json.dump(REPORT, open(OUT + "/report.json", "w"), indent=1)
