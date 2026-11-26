@@ -39,7 +39,7 @@ def mat_stripes(name, c1, c2, scale=9.0):
     nt = m.node_tree
     b = nt.nodes["Principled BSDF"]
     b.inputs["Roughness"].default_value = 0.8
-    tc = nt.nodes.new("ShaderNodeTexCoord")
+    tc = nt.nodes.new("ShaderNodeNewGeometry")  # dünya koordinatı: çizgiler parçalar arasında kesintisiz
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"; mul.inputs[1].default_value = scale
     sine = nt.nodes.new("ShaderNodeMath"); sine.operation = "SINE"
@@ -48,7 +48,7 @@ def mat_stripes(name, c1, c2, scale=9.0):
     ramp.color_ramp.elements[0].color = (*c1, 1)
     ramp.color_ramp.elements[1].position = 0.5
     ramp.color_ramp.elements[1].color = (*c2, 1)
-    nt.links.new(tc.outputs["Object"], sep.inputs[0])
+    nt.links.new(tc.outputs["Position"], sep.inputs[0])
     nt.links.new(sep.outputs["Z"], mul.inputs[0])
     nt.links.new(mul.outputs[0], sine.inputs[0])
     # sine -1..1 -> ramp 0..1

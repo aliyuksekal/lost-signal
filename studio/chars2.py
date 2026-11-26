@@ -63,8 +63,8 @@ def hair_mat2(name, color):
     m = bpy.data.materials.new(name); m.use_nodes = True
     nt = m.node_tree; b = nt.nodes["Principled BSDF"]
     b.inputs["Base Color"].default_value = (*color, 1)
-    b.inputs["Roughness"].default_value = 0.35
-    b.inputs["Coat Weight"].default_value = 0.2
+    b.inputs["Roughness"].default_value = 0.5
+    b.inputs["Coat Weight"].default_value = 0.05
     b.inputs["Anisotropic"].default_value = 0.6
     w = nt.nodes.new("ShaderNodeTexWave"); w.wave_type = "BANDS"; w.bands_direction = "X"
     w.inputs["Scale"].default_value = 60; w.inputs["Distortion"].default_value = 6
@@ -81,6 +81,48 @@ def hair_mat2(name, color):
     nt.links.new(ramp.outputs[0], b.inputs["Base Color"])
     _mats[name] = m
     return m
+
+
+# ---------------------------------------------------------------- tek parça gövde ve kafa
+def _interp(pts, t):
+    for (t0, v0), (t1, v1) in zip(pts, pts[1:]):
+        if t <= t1:
+            k = 0 if t1 == t0 else (t - t0) / (t1 - t0)
+            k = k * k * (3 - 2 * k)
+            return v0 + (v1 - v0) * k
+    return pts[-1][1]
+
+def torso_mesh(name, z0, z1, prof_x, prof_y, m, root, belly=0.0, flare=0.0):
+    """Tek parça, dikişsiz gövde: süper-elips dikey profil, yükseklikte genişlik eğrileri."""
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=56, v_segments=36, radius=1.0)
+    for v in bm.verts:
+        z = max(-1.0, min(1.0, v.co.z)); t = (z + 1) / 2
+        r0 = math.sqrt(max(1e-9, v.co.x ** 2 + v.co.y ** 2))
+        dx, dy = (v.co.x / r0, v.co.y / r0) if r0 > 1e-6 else (0.0, 0.0)
+        s = (1 - abs(z) ** 4) ** 0.25 if abs(z) < 1 else 0.0
+        rx = _interp(prof_x, t) * (1 + flare * max(0, 0.35 - t))
+        ry = _interp(prof_y, t) * (1 + flare * max(0, 0.35 - t))
+        if dy < 0 and belly:
+            ry *= 1 + belly * math.exp(-((t - 0.32) / 0.2) ** 2) * (-dy)
+        v.co = Vector((dx * rx * s, dy * ry * s, z0 + t * (z1 - z0)))
+    ob = new_obj(name, bm, m, root)
+    return smooth(ob, 2)
+
+def head_mesh(head, skin, H, jaw=1.0):
+    """Tek parça kafa: çene incelir, yanaklar dolgun, çene ucu öne çıkar. Dikiş yok."""
+    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=64, v_segments=40, radius=1.0)
+    for v in bm.verts:
+        x, y, z = v.co
+        low = max(0.0, -z)
+        x *= 1 - 0.2 * jaw * low ** 1.7                     # çene hattı
+        if y < 0:
+            y *= 1 + 0.06 * math.exp(-((z + 0.3) / 0.25) ** 2) * (-y)   # yanak dolgunluğu
+            y *= 1 + 0.08 * math.exp(-((z + 0.85) / 0.15) ** 2) * max(0, -y - 0.3)  # çene ucu
+        if z > 0.3:
+            x *= 1 + 0.03 * (z - 0.3)                        # alın/kafatası
+        v.co = Vector((x * head.r.x, y * head.r.y, z * head.r.z * (1 + 0.06 * low))) + head.c
+    ob = new_obj("head", bm, skin, H)
+    return smooth(ob, 1)
 
 # ---------------------------------------------------------------- yüz
 def build_eye(tag, head, yaw, pitch, iris_col, lid, lid_tilt, skin, parent, rig, look=Vector((0, -6, 1.45)), size=0.034):
@@ -157,9 +199,7 @@ def body(P, x=0.0, y=0.0, yaw=0.0, scale=1.0):
 
     # ---- kafa (pivot'a bağlı)
     H = pivot
-    ellipsoid("head", head.c, head.r, skin, H, sub=2)
-    ellipsoid("jaw", (0, -0.018, HZ - 0.065), (0.118 * P.get("jaw", 1.0), 0.112, 0.1), skin, H, sub=2)
-    ellipsoid("cheekbones", (0, -0.03, HZ - 0.01), (0.135, 0.11, 0.06), skin, H, sub=2)
+    head_mesh(head, skin, H, P.get("jaw", 1.0))
     ellipsoid("nose", head.point(0, -6, 0.006), (0.019, 0.03, 0.03), skin, H, rot=head.facing(0, -6))
     ellipsoid("nosetip", head.point(0, -12, 0.018), (0.02, 0.02, 0.018), skin, H, rot=head.facing(0, -12))
     for s in (-1, 1):
@@ -192,7 +232,6 @@ def body(P, x=0.0, y=0.0, yaw=0.0, scale=1.0):
 
     # ---- gövde
     P["torso_fn"](top, root, w)
-    ellipsoid("chest", (0, 0, 1.12), (0.19 * w, 0.108 * w, 0.09), P.get("sleeve", top), root, sub=2)
     ellipsoid("hips", (0, 0, 0.8), (0.145 * w, 0.1 * w, 0.1), pants, root)
     for s in (-1, 1):
         tube("leg", [(0.075 * s * w, 0, 0.82), (0.082 * s * w, -0.012, 0.46), (0.088 * s * w, 0, 0.1)], 0.058 * P.get("legw", 1.0), pants, root, taper=[1.1, 0.85, 0.7])
@@ -201,6 +240,8 @@ def body(P, x=0.0, y=0.0, yaw=0.0, scale=1.0):
     sleeve = P.get("sleeve", top)
     for side, pts in (("L", P["armL"]), ("R", P["armR"])):
         pts = [Vector(p) for p in pts]
+        # omuz: kol gövdenin içinden başlasın (dikişsiz omuz)
+        pts[0] = Vector((math.copysign(0.135 * w, pts[0].x), pts[0].y, 1.13))
         sh = pts[0] - Vector((math.copysign(0.025, pts[0].x), 0, 0.008))
         tube("arm" + side, pts, 0.044 * P.get("armw", 1.0), sleeve, root, taper=[1.0, 0.85, 0.72])
         ellipsoid("cuff" + side, pts[-1], (0.034, 0.034, 0.012), sleeve, root, rot=(pts[-1] - pts[-2]).to_track_quat("Z", "Y"))
@@ -239,20 +280,16 @@ def nora_face(head, H):
     tube("pencil", [head.point(80, 14, 0.022), head.point(72, 26, 0.05)], 0.005, mat("pencil", (0.95, 0.7, 0.1)), H)
 
 def nora_torso(m, root, w):
-    bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=24, radius=1.0)
-    for v in bm.verts:
-        f = 1.0 + max(0.0, -v.co.z) * 0.4
-        v.co.x *= f; v.co.y *= f
-    ob = new_obj("raincoat", bm, m, root); ob.location = (0, 0, 0.96); ob.scale = (0.165, 0.115, 0.27)
-    smooth(ob, 2)
-    ellipsoid("shoulders", (0, 0, 1.16), (0.175, 0.105, 0.065), m, root)
+    torso_mesh("raincoat", 0.66, 1.25,
+               [(0, 0.215), (0.3, 0.185), (0.6, 0.16), (0.82, 0.18), (0.92, 0.17), (1, 0.06)],
+               [(0, 0.15), (0.3, 0.125), (0.6, 0.115), (0.85, 0.115), (1, 0.05)], m, root)
     collar = mat("coat_dark2", (0.6, 0.34, 0.03), rough=0.35, coat=0.6)
     for s in (-1, 1):
         ellipsoid("collar", (0.055 * s, -0.07, 1.215), (0.055, 0.022, 0.035), collar, root, rot=(0.3, 0, -0.5 * s))
     btn = mat("button", (0.25, 0.14, 0.06), rough=0.3, coat=1)
     for z in (1.12, 1.0, 0.88, 0.76):
-        t = (z - 0.96) / 0.27; f = 1 + max(0, -t) * 0.4
-        yy = -0.115 * f * math.sqrt(max(0, 1 - t * t))
+        tt = (z - 0.66) / 0.59; zz = 2 * tt - 1
+        yy = -_interp([(0, 0.15), (0.3, 0.125), (0.6, 0.115), (0.85, 0.115), (1, 0.05)], tt) * (1 - abs(zz) ** 4) ** 0.25
         ellipsoid("btn", (0.0, yy - 0.003, z), (0.012, 0.006, 0.012), btn, root)
     book = mat("notebook", (0.65, 0.07, 0.07), rough=0.5)
     rounded_box("notebook", (0.13, -0.19, 1.0), (0.09, 0.02, 0.12), book, root, bevel=0.005, rot=(0.25, 0, -0.25))
@@ -292,8 +329,9 @@ def benny_hair(head, m, H):
     ellipsoid("capbutton", head.c + Vector((0, 0.02, 0.245)), (0.014, 0.014, 0.008), cap, H)
 
 def benny_torso(m, root, w):
-    ellipsoid("torso", (0, 0, 1.0), (0.2, 0.15, 0.24), m, root, sub=2)
-    ellipsoid("belly", (0, -0.02, 0.91), (0.19, 0.155, 0.17), m, root, sub=2)
+    torso_mesh("torso", 0.74, 1.25,
+               [(0, 0.2), (0.35, 0.215), (0.65, 0.205), (0.85, 0.215), (0.93, 0.2), (1, 0.06)],
+               [(0, 0.14), (0.4, 0.15), (0.7, 0.13), (0.9, 0.12), (1, 0.05)], m, root, belly=0.22)
     hp = mat("headphones", (0.08, 0.08, 0.09), rough=0.35, coat=0.5)
     acc = mat("hp_accent", (1.0, 0.55, 0.05), rough=0.3)
     bpy.ops.mesh.primitive_torus_add(major_radius=0.08, minor_radius=0.01, location=(0, 0.015, 1.235), rotation=(math.radians(-15), 0, 0))
@@ -344,7 +382,9 @@ def kai_face(head, H):
     tube("bridge", [cs[0] + Vector((0.044, 0, 0)), (cs[0] + cs[1]) / 2 + Vector((0, 0, 0.008)), cs[1] - Vector((0.044, 0, 0))], 0.004, frame, H)
 
 def kai_torso(m, root, w):
-    ellipsoid("torso", (0, 0, 1.0), (0.17, 0.115, 0.25), m, root, sub=2)
+    torso_mesh("torso", 0.74, 1.25,
+               [(0, 0.16), (0.35, 0.155), (0.65, 0.17), (0.85, 0.185), (0.93, 0.17), (1, 0.06)],
+               [(0, 0.11), (0.5, 0.11), (0.8, 0.115), (1, 0.05)], m, root)
     ellipsoid("hood", (0, 0.07, 1.22), (0.13, 0.07, 0.06), m, root)
     ellipsoid("cuffs", (0, -0.004, 0.77), (0.162, 0.112, 0.035), fabric("rib", (0.08, 0.12, 0.27), scale=500), root)
     s_m = mat("string", (0.95, 0.95, 0.95), rough=0.7)
