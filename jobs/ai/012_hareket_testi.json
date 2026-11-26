@@ -1,0 +1,5 @@
+{
+  "name": "hareket_testi_1",
+  "script": "motion_test.py",
+  "pip": ["diffusers", "transformers", "accelerate", "ftfy", "imageio", "imageio-ffmpeg"]
+}
