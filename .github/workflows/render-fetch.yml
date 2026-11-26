@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+    inputs:
+      slug:
+        description: "Kaggle işi (lost-signal-render veya lost-signal-ai)"
+        type: string
+        default: lost-signal-ai
   workflow_call:
     inputs:
       wait:
