@@ -83,6 +83,6 @@ jobs:
           NAME=$(python3 -c "import json;print(json.load(open('out/job.json'))['name'])")
           TAG="render-$NAME"
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "Zaten yayınlandı: $TAG"; exit 0; fi
-          FILES=$(ls out/*.mp4 out/*.png out/*.jpg out/*.json out/*.txt out/*/*.png 2>/dev/null | grep -v "/job.json" || true)
+          FILES=$(ls out/*.mp4 out/*.png out/*.jpg out/*.json out/*.txt out/*/*.png out/*/*.safetensors 2>/dev/null | grep -v "/job.json" || true)
           if ls out/*.mp4 >/dev/null 2>&1; then TITLE="🎬 $NAME hazır"; NOTE="Videoyu aşağıdaki Assets bölümünden indir."; else TITLE="⚠️ $NAME hata verdi"; NOTE="Video çıkmadı. render_log.txt dosyasına bak ya da Claude'a gönder."; fi
           gh release create "$TAG" $FILES -R "$GITHUB_REPOSITORY" --title "$TITLE" --notes "$NOTE"
