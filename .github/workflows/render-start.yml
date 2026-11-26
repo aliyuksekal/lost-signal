@@ -1,0 +1,73 @@
+name: 1 - Render başlat (Kaggle GPU)
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Ne render edilsin?"
+        type: choice
+        options:
+          - trailer_yatay
+          - trailer_dikey
+        default: trailer_yatay
+      quality:
+        description: "Kalite (hq = GPU yüksek kalite)"
+        type: choice
+        options: [hq, test]
+        default: hq
+
+env:
+  KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+  KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+  KERNEL_SLUG: lost-signal-render
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ayarları kontrol et
+        run: |
+          if [ -z "$KAGGLE_API_TOKEN" ]; then echo "::error::KAGGLE_API_TOKEN secret eksik (Settings > Secrets and variables > Actions)"; exit 1; fi
+          if [ -z "$KAGGLE_USERNAME" ]; then echo "::error::KAGGLE_USERNAME değişkeni eksik (Settings > Secrets and variables > Actions > Variables)"; exit 1; fi
+
+      - name: Kaggle aracını kur
+        run: pip install -q -U kaggle
+
+      - name: İşi hazırla
+        run: |
+          case "${{ inputs.job }}" in
+            trailer_yatay) ORIENT=h ;;
+            trailer_dikey) ORIENT=v ;;
+          esac
+          JOB=$(printf '{"name":"%s_%s","orientation":"%s","quality":"%s","run_id":"%s","ref":"%s"}' \
+            "${{ inputs.job }}" "${{ github.run_number }}" "$ORIENT" "${{ inputs.quality }}" "${{ github.run_id }}" "${{ github.ref_name }}")
+          echo "$JOB"
+          mkdir -p build
+          python3 - "$JOB" <<'EOF'
+          import sys, json, os
+          job = sys.argv[1]
+          src = open("kaggle/run_template.py").read().replace("__JOB__", job)
+          open("build/run.py", "w").write(src)
+          meta = {
+              "id": "%s/%s" % (os.environ["KAGGLE_USERNAME"], os.environ["KERNEL_SLUG"]),
+              "title": os.environ["KERNEL_SLUG"],
+              "code_file": "run.py",
+              "language": "python",
+              "kernel_type": "script",
+              "is_private": True,
+              "enable_gpu": True,
+              "enable_internet": True,
+              "dataset_sources": [], "competition_sources": [], "kernel_sources": [],
+          }
+          json.dump(meta, open("build/kernel-metadata.json", "w"), indent=1)
+          EOF
+
+      - name: Kaggle'a gönder
+        run: kaggle kernels push -p build
+
+      - name: Özet
+        run: |
+          echo "### Render Kaggle'da başladı 🎬" >> $GITHUB_STEP_SUMMARY
+          echo "Bitince '2 - Sonucu al' otomatik olarak videoyu Releases bölümüne koyar (30 dakikada bir kontrol eder)." >> $GITHUB_STEP_SUMMARY

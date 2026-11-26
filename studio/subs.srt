@@ -1,0 +1,20 @@
+1
+00:00:04,000 --> 00:00:07,600
+RADIO: This is a message... from the year 2056.
+
+2
+00:00:08,300 --> 00:00:11,200
+BENNY: Whoa. Did that radio just... talk?
+
+3
+00:00:11,600 --> 00:00:16,500
+NORA: Radios don't talk, Benny. Someone is pranking us.
+
+4
+00:00:16,800 --> 00:00:18,400
+KAI: Then how does it know our names?
+
+5
+00:00:18,900 --> 00:00:24,300
+RADIO: Nora. Benny. Kai. Tomorrow, three o'clock...
+do not cross the bridge.

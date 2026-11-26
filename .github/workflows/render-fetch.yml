@@ -1,0 +1,53 @@
+name: 2 - Sonucu al (Kaggle -> Releases)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+  KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+  KERNEL_SLUG: lost-signal-render
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ayar yoksa çık
+        id: cfg
+        run: |
+          if [ -z "$KAGGLE_API_TOKEN" ] || [ -z "$KAGGLE_USERNAME" ]; then echo "ok=0" >> $GITHUB_OUTPUT; else echo "ok=1" >> $GITHUB_OUTPUT; fi
+
+      - name: Kaggle aracını kur
+        if: steps.cfg.outputs.ok == '1'
+        run: pip install -q -U kaggle
+
+      - name: Durumu kontrol et
+        if: steps.cfg.outputs.ok == '1'
+        id: st
+        run: |
+          S=$(kaggle kernels status "$KAGGLE_USERNAME/$KERNEL_SLUG" 2>&1 || true)
+          echo "$S"
+          L=$(echo "$S" | tr 'A-Z' 'a-z')
+          if echo "$L" | grep -q "complete"; then echo "state=complete" >> $GITHUB_OUTPUT
+          elif echo "$L" | grep -q "error"; then echo "state=error" >> $GITHUB_OUTPUT
+          else echo "state=other" >> $GITHUB_OUTPUT; fi
+
+      - name: Çıktıyı indir ve yayınla
+        if: steps.st.outputs.state == 'complete' || steps.st.outputs.state == 'error'
+        run: |
+          mkdir -p out
+          kaggle kernels output "$KAGGLE_USERNAME/$KERNEL_SLUG" -p out || true
+          ls -la out
+          if [ ! -f out/job.json ]; then echo "job.json yok, atlanıyor"; exit 0; fi
+          NAME=$(python3 -c "import json;print(json.load(open('out/job.json'))['name'])")
+          TAG="render-$NAME"
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "Zaten yayınlandı: $TAG"; exit 0; fi
+          FILES=$(ls out/*.mp4 out/render_log.txt 2>/dev/null || true)
+          if ls out/*.mp4 >/dev/null 2>&1; then TITLE="🎬 $NAME hazır"; NOTE="Videoyu aşağıdaki Assets bölümünden indir."; else TITLE="⚠️ $NAME hata verdi"; NOTE="Video çıkmadı. render_log.txt dosyasına bak ya da Claude'a gönder."; fi
+          gh release create "$TAG" $FILES -R "$GITHUB_REPOSITORY" --title "$TITLE" --notes "$NOTE"
