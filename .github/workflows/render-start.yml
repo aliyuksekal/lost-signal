@@ -87,4 +87,13 @@ jobs:
       - name: Özet
         run: |
           echo "### Render Kaggle'da başladı 🎬" >> $GITHUB_STEP_SUMMARY
-          echo "Bitince '2 - Sonucu al' otomatik olarak videoyu Releases bölümüne koyar (30 dakikada bir kontrol eder)." >> $GITHUB_STEP_SUMMARY
+          echo "Bu çalışma render bitene kadar bekler ve videoyu kendisi Releases bölümüne koyar." >> $GITHUB_STEP_SUMMARY
+
+  collect:
+    needs: start
+    permissions:
+      contents: write
+    uses: ./.github/workflows/render-fetch.yml
+    with:
+      wait: true
+    secrets: inherit

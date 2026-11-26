@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      wait:
+        description: "Render bitene kadar bekle"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -17,6 +23,7 @@ env:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 355
     steps:
       - name: Ayar yoksa çık
         id: cfg
@@ -49,12 +56,17 @@ jobs:
         if: steps.cfg.outputs.ok == '1'
         id: st
         run: |
-          S=$(kaggle kernels status "$KAGGLE_USERNAME/$KERNEL_SLUG" 2>&1 || true)
-          echo "$S"
-          L=$(echo "$S" | tr 'A-Z' 'a-z')
-          if echo "$L" | grep -q "complete"; then echo "state=complete" >> $GITHUB_OUTPUT
-          elif echo "$L" | grep -q "error"; then echo "state=error" >> $GITHUB_OUTPUT
-          else echo "state=other" >> $GITHUB_OUTPUT; fi
+          W="${{ inputs.wait }}"
+          for i in $(seq 1 68); do
+            S=$(kaggle kernels status "$KAGGLE_USERNAME/$KERNEL_SLUG" 2>&1 || true)
+            echo "$(date -u +%H:%M) $S"
+            L=$(echo "$S" | tr 'A-Z' 'a-z')
+            if echo "$L" | grep -q "complete"; then echo "state=complete" >> $GITHUB_OUTPUT; exit 0
+            elif echo "$L" | grep -q "error"; then echo "state=error" >> $GITHUB_OUTPUT; exit 0; fi
+            if [ "$W" != "true" ]; then echo "state=other" >> $GITHUB_OUTPUT; exit 0; fi
+            sleep 300
+          done
+          echo "state=other" >> $GITHUB_OUTPUT
 
       - name: Çıktıyı indir ve yayınla
         if: steps.st.outputs.state == 'complete' || steps.st.outputs.state == 'error'
