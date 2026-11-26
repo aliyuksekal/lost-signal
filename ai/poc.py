@@ -123,7 +123,7 @@ def img2vid_diffusers():
     from diffusers import LTXImageToVideoPipeline
     from diffusers.utils import export_to_video, load_image
     res = {}
-    for dtype_name in ("bfloat16", "float16"):
+    for dtype_name, nf in (("float16", 97), ("float16", 65), ("bfloat16", 49)):
         dt = getattr(torch, dtype_name)
         try:
             pipe = LTXImageToVideoPipeline.from_pretrained("Lightricks/LTX-Video-0.9.5", torch_dtype=dt)
@@ -138,20 +138,20 @@ def img2vid_diffusers():
                 t = time.time()
                 frames = pipe(image=img, prompt=s["mov"] + ", photorealistic, cinematic, natural movement",
                               negative_prompt="worst quality, inconsistent motion, blurry, jittery, distorted face",
-                              width=768, height=448, num_frames=97, num_inference_steps=30, guidance_scale=3.0,
-                              generator=torch.Generator("cpu").manual_seed(s["seed"])).frames[0]
+                              width=768, height=448, num_frames=nf, num_inference_steps=30, guidance_scale=3.0,
+                              generator=torch.Generator("cuda").manual_seed(s["seed"])).frames[0]
                 arr = np.asarray(frames[len(frames) // 2]).astype(float)
                 if arr.mean() < 3:  # kapkara kare = NaN belirtisi
                     raise RuntimeError("bos/siyah kare (%s)" % dtype_name)
                 export_to_video(frames, OUT + "/klip_%s.mp4" % s["id"], fps=24)
-                res["%s_%s" % (s["id"], dtype_name)] = round(time.time() - t, 1)
+                res["%s_%s_%d" % (s["id"], dtype_name, nf)] = round(time.time() - t, 1)
                 ok_any = True
             del pipe; torch.cuda.empty_cache()
             if ok_any:
-                res["kullanilan"] = dtype_name
+                res["kullanilan"] = "%s/%d kare" % (dtype_name, nf)
                 return res
         except Exception as e:
-            res["hata_" + dtype_name] = repr(e)[:600]
+            res["hata_%s_%d" % (dtype_name, nf)] = repr(e)[:600]
             try:
                 del pipe
             except Exception:
