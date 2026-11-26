@@ -17,7 +17,7 @@ on:
         default: hq
 
 env:
-  KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME }}
+  KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME || secrets.KAGGLE_USERNAME }}
   KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
   KERNEL_SLUG: lost-signal-render
 
@@ -30,7 +30,7 @@ jobs:
       - name: Ayarları kontrol et
         run: |
           if [ -z "$KAGGLE_API_TOKEN" ]; then echo "::error::KAGGLE_API_TOKEN secret eksik (Settings > Secrets and variables > Actions)"; exit 1; fi
-          if [ -z "$KAGGLE_USERNAME" ]; then echo "::error::KAGGLE_USERNAME değişkeni eksik (Settings > Secrets and variables > Actions > Variables)"; exit 1; fi
+          if [ -z "$KAGGLE_USERNAME" ]; then echo "::error::KAGGLE_USERNAME eksik: Settings > Secrets and variables > Actions > Variables (veya Secrets) bölümüne Kaggle kullanıcı adını ekle"; exit 1; fi
 
       - name: Kaggle aracını kur
         run: pip install -q -U kaggle
