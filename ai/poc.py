@@ -104,9 +104,11 @@ def img2vid(cfg_name):
         outdir = TMP + "/ltx_%s" % s["id"]
         t = time.time()
         extra = "--offload_to_cpu" if "offload_to_cpu" in HELP else ""
-        sh("cd %s/LTX-Video && PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python inference.py " + extra + " --prompt %s --conditioning_media_paths %s --conditioning_start_frames 0 "
-           "--height 448 --width 768 --num_frames 97 --frame_rate 24 --seed %d --pipeline_config %s --output_path %s"
-           % (TMP, json.dumps(s["mov"] + ", photorealistic, cinematic"), small, s["seed"], cfg, outdir))
+        cmd = ("cd %s/LTX-Video && PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python inference.py %s --prompt %s "
+               "--conditioning_media_paths %s --conditioning_start_frames 0 --height 448 --width 768 --num_frames 97 "
+               "--frame_rate 24 --seed %d --pipeline_config %s --output_path %s"
+               % (TMP, extra, json.dumps(s["mov"] + ", photorealistic, cinematic"), small, s["seed"], cfg, outdir))
+        sh(cmd)
         vids = sorted(glob.glob(outdir + "/**/*.mp4", recursive=True))
         if vids:
             shutil.copy(vids[-1], OUT + "/klip_%s.mp4" % s["id"])
