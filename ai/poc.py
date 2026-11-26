@@ -6,6 +6,7 @@ import os, sys, json, time, subprocess, traceback, glob, shutil
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/kaggle/working"
 TMP = "/tmp/ai"; os.makedirs(TMP, exist_ok=True)
 REPORT = {"steps": {}}
+HELP = ""
 
 def step(name):
     def deco(fn):
@@ -88,6 +89,12 @@ def img2vid(cfg_name):
     from PIL import Image
     times = {}
     cfg = "%s/LTX-Video/configs/%s" % (TMP, cfg_name)
+    global HELP
+    try:
+        HELP = sh("cd %s/LTX-Video && python inference.py --help" % TMP)
+    except Exception as e:
+        HELP = str(e)
+    REPORT["ltx_offload"] = "offload_to_cpu" in HELP
     for s in SHOTS:
         src = OUT + "/kare_%s.png" % s["id"]
         if not os.path.exists(src):
@@ -96,7 +103,8 @@ def img2vid(cfg_name):
         Image.open(src).resize((768, 448)).save(small)
         outdir = TMP + "/ltx_%s" % s["id"]
         t = time.time()
-        sh("cd %s/LTX-Video && python inference.py --prompt %s --conditioning_media_paths %s --conditioning_start_frames 0 "
+        extra = "--offload_to_cpu" if "offload_to_cpu" in HELP else ""
+        sh("cd %s/LTX-Video && PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python inference.py " + extra + " --prompt %s --conditioning_media_paths %s --conditioning_start_frames 0 "
            "--height 448 --width 768 --num_frames 97 --frame_rate 24 --seed %d --pipeline_config %s --output_path %s"
            % (TMP, json.dumps(s["mov"] + ", photorealistic, cinematic"), small, s["seed"], cfg, outdir))
         vids = sorted(glob.glob(outdir + "/**/*.mp4", recursive=True))
