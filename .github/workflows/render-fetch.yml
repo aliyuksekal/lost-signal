@@ -23,6 +23,24 @@ jobs:
         run: |
           if [ -z "$KAGGLE_API_TOKEN" ] || [ -z "$KAGGLE_USERNAME" ]; then echo "ok=0" >> $GITHUB_OUTPUT; else echo "ok=1" >> $GITHUB_OUTPUT; fi
 
+      - name: Kullanıcı adını temizle
+        if: steps.cfg.outputs.ok == '1'
+        run: |
+          U=$(python3 - <<'PY'
+          import os, re
+          u = os.environ.get("KAGGLE_USERNAME", "").strip()
+          u = re.sub(r"^https?://", "", u)
+          u = re.sub(r"^(www\.)?kaggle\.com/", "", u)
+          u = u.strip("/").lstrip("@").split("/")[0].strip().lower()
+          print(u)
+          PY
+          )
+          if ! echo "$U" | grep -Eq '^[a-z0-9][a-z0-9_-]*$'; then
+            echo "::error::KAGGLE_USERNAME geçersiz (uzunluk ${#U}). Sadece kullanıcı adı olmalı: e-posta, boşluk ya da ad-soyad değil. Kaggle profil adresindeki kaggle.com/ sonrası kısım."
+            exit 1
+          fi
+          echo "KAGGLE_USERNAME=$U" >> $GITHUB_ENV
+
       - name: Kaggle aracını kur
         if: steps.cfg.outputs.ok == '1'
         run: pip install -q -U kaggle
