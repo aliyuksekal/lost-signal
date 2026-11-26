@@ -22,7 +22,8 @@ json.dump(JOB, open(WORK + "/job.json", "w"))
 shutil.rmtree(TMP, ignore_errors=True); os.makedirs(TMP, exist_ok=True)
 sh("git clone --depth 1 -b %s %s %s/repo" % (JOB.get("ref", "main"), REPO, TMP))
 sh("nvidia-smi; df -h /tmp /kaggle/working; free -g", check=False)
-sh("pip install -q -U " + " ".join(JOB.get("pip", [])), check=False)
+for p in JOB.get("pip", []):
+    sh("pip install -q -U %s" % p, check=False)
 for c in JOB.get("setup", []):
     sh(c, check=False)
 sh("cd %s/repo/ai && python %s %s" % (TMP, JOB["script"], WORK), {"HF_HOME": "/tmp/hf", "LS_JOB": json.dumps(JOB)}, check=False)

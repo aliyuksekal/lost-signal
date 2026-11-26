@@ -33,27 +33,27 @@ def sh(cmd):
         raise RuntimeError("komut hata verdi: %s\n%s" % (cmd, r.stdout[-1500:]))
     return r.stdout
 
-STYLE = ("cinematic film still, photorealistic, 35mm film grain, shallow depth of field, moody night lighting, "
-         "warm desk lamp and cold blue moonlight, highly detailed skin texture, natural pose")
-NEG = "cartoon, anime, 3d render, cgi, painting, illustration, deformed face, extra fingers, bad hands, text, watermark, logo, blurry"
+STYLE = ("cinematic film still from a prestige thriller TV series, photorealistic, 35mm film grain, shallow depth of field, "
+         "moody lighting, highly detailed natural skin texture, natural pose")
+NEG = "cartoon, anime, 3d render, cgi, painting, illustration, deformed face, extra fingers, bad hands, text, watermark, logo, blurry, oversaturated"
 SHOTS = [
-    dict(id="nora", seed=11,
-         img="a 23-year-old woman with a shoulder-length copper red bob haircut and freckles, green eyes, mustard yellow raincoat, "
-             "one eyebrow raised in a skeptical look, standing in a small dark bedroom, an old wooden vintage radio with a glowing amber dial on the desk beside her",
-         mov="The woman slowly raises one eyebrow and turns her head toward the glowing radio, subtle natural movement, the lamp light flickers softly, static camera",
-         voice="af_heart", line="Radios don't talk, Benny. Someone is pranking us."),
-    dict(id="kai", seed=22,
-         img="a 23-year-old East Asian man with messy black hair and round wire glasses, navy hoodie, leaning over an old wooden vintage radio "
-             "with a glowing amber dial on a cluttered desk, focused curious expression, dark bedroom, window with moonlight behind him",
-         mov="The young man leans closer to the radio and slowly turns the tuning knob, the amber dial glows brighter, subtle camera push in",
-         voice="am_michael", line="Then how does it know our names?"),
-    dict(id="benny", seed=33,
-         img="a 22-year-old Black man with curly hair under a backwards red baseball cap, orange and white striped t-shirt, headphones around his neck, "
-             "wide eyes and open mouth in shock, dark bedroom at night, an old wooden vintage radio glowing on the desk in front of him",
-         mov="The young man jumps back slightly in shock, eyes widening, then leans in toward the radio, handheld camera feel",
-         voice="am_fenrir", line="Whoa. Did that radio just... talk?"),
+    dict(id="emma", seed=11,
+         img="32-year-old woman, shoulder-length dark brown wavy hair, hazel eyes, light olive skin, minimal makeup, cream knit sweater, "
+             "standing in a dim bathroom at night, staring with a worried face at a large mirror, a tiny red light glowing behind the glass",
+         mov="The woman slowly leans toward the mirror, her eyes narrowing as she notices the small red light, tense subtle movement, slow camera push in",
+         voice="af_heart", line="Daniel... Daniel, wake up. There's a camera behind the mirror."),
+    dict(id="maggie", seed=22,
+         img="64-year-old woman, silver hair in a neat bob, pearl earrings, pastel cardigan, holding a homemade cherry pie, "
+             "standing at the front door of a perfect suburban house on a sunny morning, wide perfect smile that does not reach her eyes",
+         mov="The older woman tilts her head and smiles wider, her eyes stay cold, she lifts the pie slightly, static camera",
+         voice="af_bella", line="Welcome to Willow Lane! We're a family here. We look out for each other."),
+    dict(id="daniel", seed=33,
+         img="35-year-old man, short neat light brown hair, light stubble, blue eyes, fair skin, navy button-up shirt with rolled sleeves, "
+             "sitting at a dinner table between moving boxes at night, looking down at his glowing phone with a guilty expression",
+         mov="The man glances at his phone, quickly turns the screen face down and looks up with a forced calm smile, slow camera push in",
+         voice="am_michael", line="It's just work. Don't worry about it."),
 ]
-RADIO_LINE = ("bm_george", "Nora. Benny. Kai. Tomorrow, three o'clock. Do not cross the bridge.")
+RADIO_LINE = ("bf_emma", "If you're watching this... don't trust them.")
 
 @step("1_karakter_kareleri")
 def keyframes():
@@ -62,7 +62,10 @@ def keyframes():
     pipe = StableDiffusionXLPipeline.from_pretrained("SG161222/RealVisXL_V5.0", torch_dtype=torch.float16, variant="fp16",
                                                      use_safetensors=True).to("cuda")
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config, use_karras_sigmas=True)
-    pipe.enable_vae_tiling()
+    try:
+        pipe.vae.enable_tiling()
+    except Exception:
+        pass
     times = {}
     for s in SHOTS:
         t = time.time()
@@ -104,15 +107,18 @@ def img2vid(cfg_name):
 
 @step("3_ses")
 def voices():
-    import soundfile as sf, numpy as np
-    from kokoro import KPipeline
+    import soundfile as sf, urllib.request
+    from kokoro_onnx import Kokoro
+    base = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
+    for f in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
+        if not os.path.exists(TMP + "/" + f):
+            urllib.request.urlretrieve(base + f, TMP + "/" + f)
+    k = Kokoro(TMP + "/kokoro-v1.0.onnx", TMP + "/voices-v1.0.bin")
     res = {}
-    for voice, text, name in [(s["voice"], s["line"], s["id"]) for s in SHOTS] + [(RADIO_LINE[0], RADIO_LINE[1], "radio")]:
-        lang = "b" if voice.startswith("b") else "a"
-        pipe = KPipeline(lang_code=lang)
-        audio = np.concatenate([a for _, _, a in pipe(text, voice=voice)])
-        sf.write(OUT + "/ses_%s.wav" % name, audio, 24000)
-        res[name] = round(len(audio) / 24000, 2)
+    for voice, text, name in [(s["voice"], s["line"], s["id"]) for s in SHOTS] + [(RADIO_LINE[0], RADIO_LINE[1], "claire")]:
+        audio, sr = k.create(text, voice=voice, speed=1.0, lang="en-gb" if voice.startswith("b") else "en-us")
+        sf.write(OUT + "/ses_%s.wav" % name, audio, sr)
+        res[name] = round(len(audio) / sr, 2)
     return res
 
 @step("4_birlestir")
@@ -132,7 +138,7 @@ def assemble():
     if not parts:
         return "klip yok"
     open(TMP + "/list.txt", "w").write("".join("file '%s'\n" % p for p in parts))
-    sh("ffmpeg -y -v error -f concat -safe 0 -i %s/list.txt -c copy %s/LostSignal_gercekci_test.mp4" % (TMP, OUT))
+    sh("ffmpeg -y -v error -f concat -safe 0 -i %s/list.txt -c copy %s/PerfectNeighbors_gercekci_test.mp4" % (TMP, OUT))
     return len(parts)
 
 if __name__ == "__main__":
