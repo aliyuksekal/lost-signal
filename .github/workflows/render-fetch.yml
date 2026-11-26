@@ -10,6 +10,10 @@ on:
         description: "Render bitene kadar bekle"
         type: boolean
         default: false
+      slug:
+        description: "Kaggle kernel adı"
+        type: string
+        default: lost-signal-render
 
 permissions:
   contents: write
@@ -17,7 +21,7 @@ permissions:
 env:
   KAGGLE_USERNAME: ${{ vars.KAGGLE_USERNAME || secrets.KAGGLE_USERNAME }}
   KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
-  KERNEL_SLUG: lost-signal-render
+  KERNEL_SLUG: ${{ inputs.slug || 'lost-signal-render' }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
@@ -57,6 +61,7 @@ jobs:
         id: st
         run: |
           W="${{ inputs.wait }}"
+          if [ "$W" = "true" ]; then sleep 180; fi
           for i in $(seq 1 68); do
             S=$(kaggle kernels status "$KAGGLE_USERNAME/$KERNEL_SLUG" 2>&1 || true)
             echo "$(date -u +%H:%M) $S"
@@ -78,6 +83,6 @@ jobs:
           NAME=$(python3 -c "import json;print(json.load(open('out/job.json'))['name'])")
           TAG="render-$NAME"
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "Zaten yayınlandı: $TAG"; exit 0; fi
-          FILES=$(ls out/*.mp4 out/render_log.txt 2>/dev/null || true)
+          FILES=$(ls out/*.mp4 out/*.png out/*.jpg out/*.json out/*.txt 2>/dev/null | grep -v "/job.json" || true)
           if ls out/*.mp4 >/dev/null 2>&1; then TITLE="🎬 $NAME hazır"; NOTE="Videoyu aşağıdaki Assets bölümünden indir."; else TITLE="⚠️ $NAME hata verdi"; NOTE="Video çıkmadı. render_log.txt dosyasına bak ya da Claude'a gönder."; fi
           gh release create "$TAG" $FILES -R "$GITHUB_REPOSITORY" --title "$TITLE" --notes "$NOTE"
