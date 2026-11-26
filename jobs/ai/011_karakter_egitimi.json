@@ -1,0 +1,24 @@
+{
+ "name": "karakter_egitimi_1",
+ "script": "train_cast.py",
+ "steps": 800,
+ "pip": [
+  "diffusers",
+  "transformers",
+  "accelerate",
+  "peft",
+  "datasets",
+  "bitsandbytes",
+  "tensorboard"
+ ],
+ "cast": {
+  "emma": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/emma_1.png",
+  "daniel": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/daniel_4.png",
+  "maggie": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/maggie_1.png",
+  "grant": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/grant_3.png",
+  "vanessa": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/vanessa_3.png",
+  "owen": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/owen_2.png",
+  "rosa": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/rosa_4.png",
+  "claire": "https://github.com/aliyuksekal/lost-signal/releases/download/render-oyuncu_secmesi_1/claire_2.png"
+ }
+}

@@ -77,7 +77,7 @@ def worker(names, gpu):
             cmd = ("CUDA_VISIBLE_DEVICES=%d accelerate launch --num_processes 1 --mixed_precision fp16 %s/train_lora.py "
                    "--pretrained_model_name_or_path %s --pretrained_vae_model_name_or_path madebyollin/sdxl-vae-fp16-fix "
                    "--dataset_name %s --caption_column text --image_column image "
-                   "--instance_prompt 'photo of tpn_%s' --resolution 768 --train_batch_size 1 --gradient_accumulation_steps 2 "
+                   "--instance_prompt 'photo of tpn_%s' --resolution 768 --train_batch_size 1 --gradient_accumulation_steps 1 "
                    "--gradient_checkpointing --use_8bit_adam --learning_rate 1e-4 --lr_scheduler constant --lr_warmup_steps 0 "
                    "--max_train_steps %d --rank 16 --mixed_precision fp16 --seed 0 --output_dir %s "
                    % (gpu, TMP, BASE, d + "_hf", name, JOB.get("steps", 800), out))
