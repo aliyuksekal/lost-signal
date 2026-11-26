@@ -1,0 +1,5 @@
+{
+  "name": "oyuncu_secmesi_1",
+  "script": "faces.py",
+  "pip": ["diffusers", "transformers", "accelerate"]
+}
