@@ -1,0 +1,44 @@
+{
+  "title": "What If You Were the Last Person on Earth?",
+  "voice": "bm_george",
+  "style": "stylized 3D animated film, cinematic CGI render, soft global illumination, volumetric light, rich detail, shallow depth of field, vertical composition",
+  "hero": "a lone man in his thirties with short dark hair, wearing a dark green jacket and jeans",
+  "segments": [
+    {"text": "What if you woke up tomorrow, and you were the last person on Earth?",
+     "shots": [
+       "{hero} stands alone in the middle of a huge empty city avenue at sunrise, skyscrapers on both sides, no cars, no people, slow camera push in from behind him",
+       "close-up of {hero} looking around in disbelief on an empty street, golden morning light, gentle handheld camera"]},
+    {"text": "No traffic. No queues. Every shop, every car, every house is yours.",
+     "shots": [
+       "{hero} walks happily through an empty brightly lit supermarket aisle full of products, pushing a shopping cart, camera tracking alongside",
+       "{hero} opens the door of a shiny red sports car parked on an empty city street, smiling, camera slowly orbiting"]},
+    {"text": "But owning everything is not the same as keeping it running.",
+     "shots": [
+       "wide shot of a quiet empty city intersection, traffic lights blinking, {hero} small in the distance, slow dolly back"]},
+    {"text": "With no one at the controls, the lights would likely go out within days.",
+     "shots": [
+       "night city skyline, windows of skyscrapers turning off one block at a time until the city is dark, static wide camera",
+       "inside a huge empty power plant control room, rows of screens flicker and go dark, warning lights blink red, slow camera pan"]},
+    {"text": "Subway pumps stop, and the tunnels slowly start to fill with water.",
+     "shots": [
+       "an empty underground subway station, water rising slowly over the tracks, dim emergency lighting, slow camera push forward"]},
+    {"text": "Food spoils. Fuel goes stale. Anything that breaks, you fix alone.",
+     "shots": [
+       "{hero} sits on the floor of a dark kitchen lit only by an open empty fridge, holding a flashlight, tired",
+       "{hero} works alone on a car engine in an empty garage at dusk, sparks and a lamp, camera slowly circling"]},
+    {"text": "Then the quiet gets louder. No one to call. No one to share a meal with.",
+     "shots": [
+       "{hero} sits on a rooftop at night holding a phone with no signal, a dark city below, the Milky Way bright in the sky, slow crane up",
+       "{hero} eats alone at a long empty dining table in a big dim room, a single candle, static camera"]},
+    {"text": "Researchers say real social connection matters for our health more than we think.",
+     "shots": [
+       "warm glowing threads of light connecting many tiny houses across a dark landscape at night, then the lights fading one by one, slow aerial camera"]},
+    {"text": "So you set the table for two. Just in case.",
+     "shots": [
+       "{hero} gently places a second plate and a glass across the table from his own, warm candle light, slow push in",
+       "an empty chair with a set plate at a candlelit table, the window behind shows a dark city with the Milky Way, camera slowly pulls back"]},
+    {"text": "Would you last a week? Tell me below, and follow for more what ifs.",
+     "shots": [
+       "{hero} stands on a hill at dawn looking over an empty city slowly being overgrown by green plants, wind in the grass, slow camera push from behind"]}
+  ]
+}

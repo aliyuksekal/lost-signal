@@ -1,0 +1,5 @@
+{
+  "name": "son_insan_1",
+  "script": "last_person.py",
+  "pip": ["diffusers", "transformers", "accelerate", "ftfy", "imageio", "imageio-ffmpeg", "sentencepiece", "protobuf"]
+}
