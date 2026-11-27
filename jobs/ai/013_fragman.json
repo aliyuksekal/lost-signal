@@ -1,0 +1,5 @@
+{
+  "name": "fragman_shorts_1",
+  "script": "trailer.py",
+  "pip": ["diffusers", "transformers", "accelerate", "peft", "soundfile", "kokoro-onnx", "imageio", "imageio-ffmpeg"]
+}
